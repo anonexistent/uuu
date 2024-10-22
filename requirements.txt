@@ -1,0 +1,15 @@
+Gorm / sqlx
+goose
+go-kit
+chi
+go-redis
+gin
+echo
+fiber
+watermill
+carbon
+melody
+gen
+glide
+"goroutines, channels"
+"elk" - https://dev-gang.ru/article/ispolzovanie-elasticsearch-logstash-i-kibana-s-prilozhenijami-go-4yd32e6ff4/
