@@ -5,15 +5,28 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
+	"time"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/spf13/viper"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+)
+
+var MyLogger = logger.New(
+	log.New(os.Stderr, "\r\n", log.LstdFlags),
+	logger.Config{
+		SlowThreshold:             time.Millisecond,
+		LogLevel:                  logger.Info,
+		IgnoreRecordNotFoundError: true,
+		Colorful:                  true,
+	},
 )
 
 type User struct {
-	Id    int
+	Id    uint
 	Name  string
 	Email string
 }
@@ -36,16 +49,17 @@ func main() {
 		panic("TEST_DB_PATH is empty")
 	}
 
-	db, err := gorm.Open(postgres.Open(dbPath.(string)), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dbPath.(string)), &gorm.Config{Logger: MyLogger})
 	if err != nil {
 		log.Panicf("failed to connect database: \n%v\n%v", dbPath, err)
 	}
 
-	user, err := GetUserNew(db, 1)
+	u, err := GetUserByEmail(db, "test@mail")
 	if err != nil {
-		panic(err)
+		os.Exit(-1)
 	}
-	PrintJson(user)
+	PrintJson(u)
+
 	////	native
 	// conn, err := pgx.Connect(context.Background(), dbPath.(string))
 	// if err != nil {
@@ -62,10 +76,52 @@ func PrintJson(v any) {
 	fmt.Println(string(bytes))
 }
 
+/*
+// Get the first record ordered by primary key
+db.First(&user)
+// SELECT * FROM users ORDER BY id LIMIT 1;
+
+// Get one record, no specified order
+db.Take(&user)
+// SELECT * FROM users LIMIT 1;
+
+// Get last record, ordered by primary key desc
+db.Last(&user)
+// SELECT * FROM users ORDER BY id DESC LIMIT 1;
+*/
+func GetUserByEmail(db *gorm.DB, name string) ([]User, error) {
+	us := make([]User, 0)
+	err := db.Where("email LIKE ?", "%"+name+"%").Find(&us).Error
+	return us, err
+}
+
+func GetUserByName(db *gorm.DB, name string) (User, error) {
+	var user User
+	err := db.Where("name = ?", name).Take(&user).Error
+	return user, err
+}
+
 func GetUserNew(db *gorm.DB, userId int) (User, error) {
 	var user User
 	err := db.Take(&user, userId).Error
 	return user, err
+}
+
+func GetUserListNew(db *gorm.DB) ([]User, error) {
+	us := make([]User, 0)
+	// err:= db.Preload("Images").Find(&us).Error
+	err := db.Find(&us).Error
+	return us, err
+}
+
+func CreateUserNew(db *gorm.DB, user User) (uint, error) {
+	err := db.Create(&user).Error
+	return user.Id, err
+}
+
+func RemoveUserNew(db *gorm.DB, id uint) (int, error) {
+	command := db.Delete(&User{}, id)
+	return int(command.RowsAffected), command.Error
 }
 
 func GetUser(con *pgx.Conn, userId int) (User, error) {
