@@ -13,8 +13,9 @@ import (
 )
 
 type User struct {
-	id   int
-	name string
+	Id    int
+	Name  string
+	Email string
 }
 
 func (User) TableName() string {
@@ -75,8 +76,9 @@ func GetUser(con *pgx.Conn, userId int) (User, error) {
 		userId,
 	)
 	err := row.Scan(
-		&user.id,
-		&user.name,
+		&user.Id,
+		&user.Name,
+		&user.Email,
 	)
 	if err != nil {
 		return user, err
@@ -98,8 +100,9 @@ func GetUserList(con *pgx.Conn) ([]User, error) {
 	for rows.Next() {
 		var user User
 		err := rows.Scan(
-			&user.id,
-			&user.name,
+			&user.Id,
+			&user.Name,
+			&user.Email,
 		)
 		if err != nil {
 			return []User{}, err
@@ -113,8 +116,8 @@ func CreateUser(con *pgx.Conn, user User) (int, error) {
 	var id int
 	err := con.QueryRow(
 		context.Background(),
-		"insert into users values($1,$2) returning id",
-		user.id, user.name,
+		"insert into users values($1,$2,$3) returning id",
+		user.Id, user.Name, user.Email,
 	).Scan(&id)
 	if err != nil {
 		return -1, err
